@@ -2,16 +2,16 @@
 
 ## Prerequisites:
 #
-# 1. Add custom field for snyk-vuln-id in JIRA:
+# 1. Add custom field for nsp-vuln-id in JIRA:
 #  - Settings --> Issues --> Custom Fields --> Add Custom Field -->
 #       Text Field Single Line
-#       'snyk-vuln-id'
+#       'nsp-vuln-id'
 #       Select relevant project screens
 #
-# 2. Add custom field for snyk-path in JIRA:
+# 2. Add custom field for nsp-path in JIRA:
 #  - Settings --> Issues --> Custom Fields --> Add Custom Field -->
 #       Text Field Single Line
-#       'snyk-path'
+#       'nsp-path'
 #       Select relevant project screens
 #
 # 3. Create .jirac file in local directorty with four lines
@@ -25,8 +25,8 @@ DEBUG=
 ## Add comment: ADD_COMMENT=1 to add comment if open issue with same vuln already exists. ADD_COMMENT= to skip
 ADD_COMMENT=
 
-JIRA_SNYK_CUSTOM_FIELD_VULN_NAME=snyk-vuln-id
-JIRA_SNYK_CUSTOM_FIELD_PATH_NAME=snyk-path
+JIRA_NSP_CUSTOM_FIELD_VULN_NAME=nsp-vuln-id
+JIRA_NSP_CUSTOM_FIELD_PATH_NAME=nsp-path
 
 
 ## .jirarc format:
@@ -47,8 +47,8 @@ fi
 
 function usage()
 {
-  echo "Usage: $0 <snyk_test.json>"
-  echo "snyk_test.json should be the output of running 'snyk test --json > snyk_test.json'"
+  echo "Usage: $0 <nsp-test.json>"
+  echo "nsp-test.json should be the output of running 'nsp check --reporter json > nsp-test.json'"
 }
 
 function uc_first()
@@ -109,22 +109,22 @@ function jira_create_issue()
 {
   local PROJECT_ID=$1
   local SUMMARY=$2
-  local SNYK_VULN_ID=$3
-  local SNYK_PATH=$4
+  local NSP_VULN_ID=$3
+  local NSP_PATH=$4
   local SEVERITY=`uc_first $5`
 
-  local SNYK_VULN_ID_ENC=`urlencode "$SNYK_VULN_ID"`
-  local SNYK_PATH_ENC=`urlencode "$SNYK_PATH"`
+  local NSP_VULN_ID_ENC=`urlencode "$NSP_VULN_ID"`
+  local NSP_PATH_ENC=`urlencode "$NSP_PATH"`
 
   local PAYLOAD_FILE=`mktemp`
 
-  local ISSUE_KEY=`jira_curl "search?jql=project=$PROJECT_ID+AND+status!=Done+AND+$JIRA_SNYK_CUSTOM_FIELD_VULN_NAME~$SNYK_VULN_ID_ENC+AND+$JIRA_SNYK_CUSTOM_FIELD_PATH_NAME~\"$SNYK_PATH_ENC\"&maxResults=1&fields=id,key" | jq '.issues[0].key' | tr -d '"'`
+  local ISSUE_KEY=`jira_curl "search?jql=project=$PROJECT_ID+AND+status!=Done+AND+$JIRA_NSP_CUSTOM_FIELD_VULN_NAME~$NSP_VULN_ID_ENC+AND+$JIRA_NSP_CUSTOM_FIELD_PATH_NAME~\"$NSP_PATH_ENC\"&maxResults=1&fields=id,key" | jq '.issues[0].key' | tr -d '"'`
 
   local re='^[A-Za-z]{3}-[0-9]+$'
   if [[ $ISSUE_KEY =~ $re ]] ; then
     ## Issue with same vuln and path exists
     if [[ $ADD_COMMENT == 1 ]] ; then
-      [ $DEBUG ] && echo "Found exising issue with snyk-vuln-id=$SNYK_VULN_ID (id=$ISSUE_KEY) [$SNYK_PATH] --> Adding comment"
+      [ $DEBUG ] && echo "Found exising issue with nsp-vuln-id=$NSP_VULN_ID (id=$ISSUE_KEY) [$NSP_PATH] --> Adding comment"
       cat > $PAYLOAD_FILE <<EOM
 {
     "body": "Vulnerability not resolved yet"
@@ -132,11 +132,11 @@ function jira_create_issue()
 EOM
       jira_curl issue/$ISSUE_KEY/comment POST $PAYLOAD_FILE | grep -v "self"
     else
-      [ $DEBUG ] && echo "Found exising issue with snyk-vuln-id=$SNYK_VULN_ID (id=$ISSUE_KEY) [$SNYK_PATH] --> Skipping"
+      [ $DEBUG ] && echo "Found exising issue with nsp-vuln-id=$NSP_VULN_ID (id=$ISSUE_KEY) [$NSP_PATH] --> Skipping"
     fi
   else
     ## New issue
-    [ $DEBUG ] && echo "Creating new issue for snyk-vuln-id=$SNYK_VULN_ID: $SUMMARY"
+    [ $DEBUG ] && echo "Creating new issue for nsp-vuln-id=$NSP_VULN_ID: $SUMMARY"
 
       cat > $PAYLOAD_FILE <<EOM
 {
@@ -151,9 +151,9 @@ EOM
     "issuetype": {
       "name": "Bug"
     },
-    "description": "For more information please refer to https://snyk.io/vuln/$SNYK_VULN_ID",
-    "$JIRA_SNYK_CUSTOM_FIELD_VULN_ID": "$SNYK_VULN_ID",
-    "$JIRA_SNYK_CUSTOM_FIELD_PATH_ID": "$SNYK_PATH"
+    "description": "For more information please refer to https://nodesecurity.io/advisories/$NSP_VULN_ID",
+    "$JIRA_NSP_CUSTOM_FIELD_VULN_ID": "$NSP_VULN_ID",
+    "$JIRA_NSP_CUSTOM_FIELD_PATH_ID": "$NSP_PATH"
   }
 }
 EOM
@@ -181,7 +181,7 @@ N_VULNS=`cat $JSON_FILE | jq '.vulnerabilities | length'`
 
 re='^[0-9]+$'
 if ! [[ $N_VULNS =~ $re ]]; then
-  echo $JSON_FILE does not [$N_VULNS] seem to be an output of 'snyk test --json'
+  echo $JSON_FILE does not [$N_VULNS] seem to be an output of 'nsp check --reporter json'
   exit 1
 fi
 
@@ -198,21 +198,21 @@ fi
 JIRA_PROJECT_ID=`jira_get_project_id $JIRA_PROJECT_NAME`
 [ $DEBUG ] && echo Found project id $JIRA_PROJECT_ID for $JIRA_PROJECT_NAME
 
-JIRA_SNYK_CUSTOM_FIELD_VULN_ID=`jira_get_custom_field_id $JIRA_SNYK_CUSTOM_FIELD_VULN_NAME`
-[ $DEBUG ] && echo Found custom field id $JIRA_SNYK_CUSTOM_FIELD_VULN_ID for $JIRA_SNYK_CUSTOM_FIELD_VULN_NAME
+JIRA_NSP_CUSTOM_FIELD_VULN_ID=`jira_get_custom_field_id $JIRA_NSP_CUSTOM_FIELD_VULN_NAME`
+[ $DEBUG ] && echo Found custom field id $JIRA_NSP_CUSTOM_FIELD_VULN_ID for $JIRA_NSP_CUSTOM_FIELD_VULN_NAME
 
-JIRA_SNYK_CUSTOM_FIELD_PATH_ID=`jira_get_custom_field_id $JIRA_SNYK_CUSTOM_FIELD_PATH_NAME`
-[ $DEBUG ] && echo Found custom field id $JIRA_SNYK_CUSTOM_FIELD_PATH_ID for $JIRA_SNYK_CUSTOM_FIELD_PATH_NAME
+JIRA_NSP_CUSTOM_FIELD_PATH_ID=`jira_get_custom_field_id $JIRA_NSP_CUSTOM_FIELD_PATH_NAME`
+[ $DEBUG ] && echo Found custom field id $JIRA_NSP_CUSTOM_FIELD_PATH_ID for $JIRA_NSP_CUSTOM_FIELD_PATH_NAME
 
 
 for ((i=0;i<$N_VULNS;i++)); do
-    TITLE=`cat $JSON_FILE | jq ".vulnerabilities[$i].title" | tr -d '"'`
-    SEVERITY=`cat $JSON_FILE | jq ".vulnerabilities[$i].severity"| tr -d '"'`
-    SNYK_VULN_ID=`cat $JSON_FILE | jq ".vulnerabilities[$i].alternativeIds[0]"| tr -d '"'`
-    MODULE=`cat $JSON_FILE | jq ".vulnerabilities[$i].moduleName"| tr -d '"'`
-    PACKAGE=`cat $JSON_FILE | jq ".vulnerabilities[$i].from[0] | split(\"@\") | .[0]" | tr -d '"'`
-    SNYK_PATH=`cat $JSON_FILE | jq ".vulnerabilities[$i].from | join(\" -> \")" | tr -d '"'`
-    SUMMARY="[SNYK] ${TITLE/\"/g}: $SEVERITY severity vulnerability found in '$MODULE' for $PACKAGE ($SNYK_VULN_ID)"
+    TITLE=`cat $JSON_FILE | jq "[$i].title" | tr -d '"'`
+    SEVERITY=`cat $JSON_FILE | jq "[$i].cvss_score"| tr -d '"'`
+    NSP_VULN_ID=`cat $JSON_FILE | jq "[$i].id"| tr -d '"'`
+    MODULE=`cat $JSON_FILE | jq "[$i].module"| tr -d '"'`
+    PACKAGE=`cat $JSON_FILE | jq "[$i].path[0] | split(\"@\") | .[0]" | tr -d '"'`
+    NSP_PATH=`cat $JSON_FILE | jq "[$i].path | join(\" -> \")" | tr -d '"'`
+    SUMMARY="[NSP] ${TITLE/\"/g}: $SEVERITY severity vulnerability found in '$MODULE' for $PACKAGE ($NSP_VULN_ID)"
 
-    jira_create_issue $JIRA_PROJECT_ID "$SUMMARY" "$SNYK_VULN_ID" "$SNYK_PATH" "$SEVERITY"
+    jira_create_issue $JIRA_PROJECT_ID "$SUMMARY" "$NSP_VULN_ID" "$NSP_PATH" "$SEVERITY"
 done
