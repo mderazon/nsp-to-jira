@@ -177,7 +177,7 @@ if ! [ -r $JSON_FILE ]; then
   exit 1
 fi
 
-N_VULNS=`cat $JSON_FILE | jq '.vulnerabilities | length'`
+N_VULNS=`cat $JSON_FILE | jq '. | length'`
 
 re='^[0-9]+$'
 if ! [[ $N_VULNS =~ $re ]]; then
@@ -204,14 +204,13 @@ JIRA_NSP_CUSTOM_FIELD_VULN_ID=`jira_get_custom_field_id $JIRA_NSP_CUSTOM_FIELD_V
 JIRA_NSP_CUSTOM_FIELD_PATH_ID=`jira_get_custom_field_id $JIRA_NSP_CUSTOM_FIELD_PATH_NAME`
 [ $DEBUG ] && echo Found custom field id $JIRA_NSP_CUSTOM_FIELD_PATH_ID for $JIRA_NSP_CUSTOM_FIELD_PATH_NAME
 
-
 for ((i=0;i<$N_VULNS;i++)); do
-    TITLE=`cat $JSON_FILE | jq "[$i].title" | tr -d '"'`
-    SEVERITY=`cat $JSON_FILE | jq "[$i].cvss_score"| tr -d '"'`
-    NSP_VULN_ID=`cat $JSON_FILE | jq "[$i].id"| tr -d '"'`
-    MODULE=`cat $JSON_FILE | jq "[$i].module"| tr -d '"'`
-    PACKAGE=`cat $JSON_FILE | jq "[$i].path[0] | split(\"@\") | .[0]" | tr -d '"'`
-    NSP_PATH=`cat $JSON_FILE | jq "[$i].path | join(\" -> \")" | tr -d '"'`
+    TITLE=`cat $JSON_FILE | jq ".[$i].title" | tr -d '"'`
+    SEVERITY=`cat $JSON_FILE | jq ".[$i].cvss_score"| tr -d '"'`
+    NSP_VULN_ID=`cat $JSON_FILE | jq ".[$i].id"| tr -d '"'`
+    MODULE=`cat $JSON_FILE | jq ".[$i].module"| tr -d '"'`
+    PACKAGE=`cat $JSON_FILE | jq ".[$i].path[0] | split(\"@\") | .[0]" | tr -d '"'`
+    NSP_PATH=`cat $JSON_FILE | jq ".[$i].path | join(\" -> \")" | tr -d '"'`
     SUMMARY="[NSP] ${TITLE/\"/g}: $SEVERITY severity vulnerability found in '$MODULE' for $PACKAGE ($NSP_VULN_ID)"
 
     jira_create_issue $JIRA_PROJECT_ID "$SUMMARY" "$NSP_VULN_ID" "$NSP_PATH" "$SEVERITY"
