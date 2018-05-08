@@ -134,7 +134,7 @@ function jira_create_issue()
 
   local ISSUE_KEY=`jira_curl "search?jql=project=$PROJECT_ID+AND+status!=Done+AND+$JIRA_NSP_CUSTOM_FIELD_VULN_NAME~$NSP_VULN_ID_ENC+AND+$JIRA_NSP_CUSTOM_FIELD_PATH_NAME~\"$NSP_PATH_ENC\"&maxResults=1&fields=id,key" | jq '.issues[0].key' | tr -d '"'`
 
-  local re='^[A-Za-z]{3}-[0-9]+$'
+  local re='^(?!\s*$).+'
   if [[ $ISSUE_KEY =~ $re ]] ; then
     ## Issue with same vuln and path exists
     if [[ $ADD_COMMENT == 1 ]] ; then
