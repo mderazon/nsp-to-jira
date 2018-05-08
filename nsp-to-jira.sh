@@ -57,6 +57,20 @@ function uc_first()
   echo $UC_FIRST
 }
 
+function severity()
+{
+  read SCORE
+  if (( $(echo "$SCORE < 4" | bc -l) )); then
+    echo "Low"
+  elif (( $(echo "$SCORE < 7" | bc -l) )); then
+    echo "Medium"
+  elif (( $(echo "$SCORE < 9" | bc -l) )); then
+    echo "High"
+  else
+    echo "Critical"
+  fi
+}
+
 function urlencode()
 {
     local length="${#1}"
@@ -206,7 +220,7 @@ JIRA_NSP_CUSTOM_FIELD_PATH_ID=`jira_get_custom_field_id $JIRA_NSP_CUSTOM_FIELD_P
 
 for ((i=0;i<$N_VULNS;i++)); do
     TITLE=`cat $JSON_FILE | jq ".[$i].title" | tr -d '"'`
-    SEVERITY=`cat $JSON_FILE | jq ".[$i].cvss_score"| tr -d '"'`
+    SEVERITY=`cat $JSON_FILE | jq ".[$i].cvss_score"| tr -d '"' | severity`
     NSP_VULN_ID=`cat $JSON_FILE | jq ".[$i].id"| tr -d '"'`
     MODULE=`cat $JSON_FILE | jq ".[$i].module"| tr -d '"'`
     PACKAGE=`cat $JSON_FILE | jq ".[$i].path[0] | split(\"@\") | .[0]" | tr -d '"'`
